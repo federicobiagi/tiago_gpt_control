@@ -1,0 +1,171 @@
+[
+    {
+        "type": "function",
+        "function": {
+            "name": "get_entity_position",
+            "description": "Ottiene la posizione (x, y, z) di un'entità in Gazebo nel frame 'world'. Utile per sapere dove si trova un oggetto o il robot nel mondo globale prima di pianificare un movimento complesso.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Nome dell'entità in Gazebo. Puoi usare, ad esempio, 'cocacola', 'biscuits_pack' o 'tiago'."
+                    }
+                },
+                "required": [
+                    "name"
+                ]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_object_position_in_base",
+            "description": "Restituisce la posizione (x_b, y_b, z_b) di un oggetto nel frame 'base_footprint' del robot. Serve per sapere dove si trova un oggetto rispetto alla base del robot (avanti/indietro, sinistra/destra, altezza).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "object_name": {
+                        "type": "string",
+                        "description": "Nome dell'oggetto in Gazebo, ad esempio 'cocacola' o 'biscuits_pack'."
+                    }
+                },
+                "required": [
+                    "object_name"
+                ]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "move_distance",
+            "description": "Muove la base mobile del robot in avanti o indietro lungo l'asse x del frame 'base_footprint'. Distanza in metri; velocità in metri/secondo.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "distance": {
+                        "type": "number",
+                        "description": "Distanza totale da percorrere in metri. Valori > 0: avanti; valori < 0: indietro."
+                    },
+                    "speed": {
+                        "type": "number",
+                        "description": "Velocità lineare in m/s (valore assoluto; il verso è determinato dal segno di 'distance')."
+                    }
+                },
+                "required": [
+                    "distance",
+                    "speed"
+                ]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "rotate_angle",
+            "description": "Ruota la base del robot attorno all'asse verticale (yaw). L'angolo è espresso in radianti: valori positivi = rotazione antioraria (verso sinistra), negativi = rotazione oraria (verso destra).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "angle": {
+                        "type": "number",
+                        "description": "Angolo totale da ruotare in radianti. Ad esempio ~1.57 ≈ 90 gradi, ~-1.57 ≈ -90 gradi."
+                    },
+                    "angular_speed": {
+                        "type": "number",
+                        "description": "Velocità angolare in rad/s (valore assoluto; il verso è determinato dal segno di 'angle')."
+                    }
+                },
+                "required": [
+                    "angle",
+                    "angular_speed"
+                ]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "open_gripper",
+            "description": "Apre il gripper del robot portando le dita in posizione aperta. Da usare prima di afferrare un oggetto o per rilasciarlo.",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "detach_object",
+            "description": "Rilascia un oggetto precedentemente preso dal robot con il gripper. Ad esempio quando devi rilasciare un oggetto dopo averlo preso in una precedente richiesta",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "model1": {
+                        "type": "string",
+                        "description": "Nome del modello principale, di solito 'tiago'. Se omesso, viene usato il valore di default del controller."
+                    },
+                    "link1": {
+                        "type": "string",
+                        "description": "Nome del link del robot da cui staccare l'oggetto, di solito 'arm_6_link'."
+                    },
+                    "model2": {
+                        "type": "string",
+                        "description": "Nome del modello dell'oggetto da staccare, ad esempio 'cocacola' o 'biscuits_pack'."
+                    },
+                    "link2": {
+                        "type": "string",
+                        "description": "Nome del link dell'oggetto, tipicamente 'link'."
+                    }
+                },
+                "required": [
+                    "model2"
+                ]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "grasp_object_by_name_front",
+            "description": "Esegue una sequenza di presa frontale automatica verso un oggetto: apre il gripper, si posiziona in pre-grasp, si avvicina, attacca l'oggetto con il link attacher e lo solleva. Usa la posizione dell'oggetto nel frame base e l'orientazione corrente dell'end-effector.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "object_name": {
+                        "type": "string",
+                        "description": "Nome dell'oggetto in Gazebo da afferrare, ad esempio 'cocacola' o 'biscuits_pack'."
+                    }
+                },
+                "required": [
+                    "object_name"
+                ]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "move_arm",
+            "description": "Muove il braccio del robot alle joint value position specificate. Le posizioni sono espresse in radianti per ciascuna delle 7 giunture del braccio.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "joint_positions": {
+                        "type": "array",
+                        "items": {
+                            "type": "number"
+                        },
+                        "description": "Lista di 7 valori float che rappresentano le posizioni delle giunture del braccio [arm_1_joint, arm_2_joint, arm_3_joint, arm_4_joint, arm_5_joint, arm_6_joint, arm_7_joint] in radianti."
+                    }
+                },
+                "required": [
+                    "joint_positions"
+                ]
+            }
+        }
+    }
+]
