@@ -171,9 +171,10 @@ def main():
     parser.add_argument("--api_key", type=str, default=os.getenv("OPENAI_Personal_Key"), help="OpenAI API key")
     parser.add_argument("--model", type=str, default="gpt-5", help="OpenAI model to use")
     parser.add_argument("--temperature",type=float,default=0.2,help="Sampling temperature" )
+    parser.add_argument("--tools", type=bool, default=True, help="Enable tool usage" )
     args = parser.parse_args()
 
-    node = GPTManager(api_key=args.api_key, model=args.model, temperature=args.temperature, with_tools=False)
+    node = GPTManager(api_key=args.api_key, model=args.model, temperature=args.temperature, with_tools=args.tools)
 
     try:
         node.run()
