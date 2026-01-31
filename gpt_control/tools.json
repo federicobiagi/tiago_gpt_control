@@ -2,44 +2,6 @@
     {
         "type": "function",
         "function": {
-            "name": "get_entity_position",
-            "description": "Ottiene la posizione (x, y, z) di un'entità in Gazebo nel frame 'world'. Utile per sapere dove si trova un oggetto o il robot nel mondo globale prima di pianificare un movimento complesso.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "description": "Nome dell'entità in Gazebo. Puoi usare, ad esempio, 'cocacola', 'biscuits_pack' o 'tiago'."
-                    }
-                },
-                "required": [
-                    "name"
-                ]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_object_position_in_base",
-            "description": "Restituisce la posizione (x_b, y_b, z_b) di un oggetto nel frame 'base_footprint' del robot. Serve per sapere dove si trova un oggetto rispetto alla base del robot (avanti/indietro, sinistra/destra, altezza).",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "object_name": {
-                        "type": "string",
-                        "description": "Nome dell'oggetto in Gazebo, ad esempio 'cocacola' o 'biscuits_pack'."
-                    }
-                },
-                "required": [
-                    "object_name"
-                ]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
             "name": "move_distance",
             "description": "Muove la base mobile del robot in avanti o indietro lungo l'asse x del frame 'base_footprint'. Distanza in metri; velocità in metri/secondo.",
             "parameters": {

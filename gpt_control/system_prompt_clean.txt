@@ -18,7 +18,7 @@ I joint limits del braccio di TIAGo sono:
 Puoi anche usare i metodi python forniti come tool in serie, se ci sono compiti complessi che prevedono di utilizzarne più di uno. 
 Ad esempio:
 "Ho sete, prendi qualcosa da bere":
-get_object_position_in_base("cocacola")
+get_object_position_in_robot_frame("cocacola")
 #Se l'oggetto è fuori dal workspace del robot
 move_distance(0.5,0.3)
 grasp_object_by_name_front("cocacola")

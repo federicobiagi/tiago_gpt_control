@@ -2,6 +2,7 @@
 
 import math
 import time
+import numpy as np
 import rclpy
 from rclpy.node import Node
 from gazebo_msgs.srv import GetEntityState
@@ -15,6 +16,42 @@ def yaw_from_quaternion(q):
     siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
     cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
     return math.atan2(siny_cosp, cosy_cosp)
+
+
+def rotation_matrix_z(yaw): #because we only care about the orientation around the z-axis
+    """Returns a 3x3 rotation matrix for rotation around the z-axis (yaw)."""
+    cos_yaw = np.cos(yaw)
+    sin_yaw = np.sin(yaw)
+    return np.array([
+        [cos_yaw, -sin_yaw, 0.0],
+        [sin_yaw,  cos_yaw, 0.0],
+        [0.0,      0.0,     1.0]
+    ])
+
+
+def transform_to_robot_frame(world_position, robot_position, robot_orientation):
+    """
+    Transform a point from world frame to robot's base_footprint frame.
+    
+    Args:
+        world_position: (x, y, z) position in world frame
+        robot_position: (x, y, z) robot position in world frame
+        robot_orientation: quaternion (x, y, z, w)
+    
+    Returns:
+        (x_robot, y_robot, z_robot) position in robot's base frame
+    """
+    # Translation: Get position relative to robot in world frame
+    p_world = np.array([world_position.x, world_position.y, world_position.z])
+    robot_world = np.array([robot_position.x, robot_position.y, robot_position.z])
+    p_relative_world = p_world - robot_world
+
+    # Rotation: Convert from world frame to robot frame
+    yaw = yaw_from_quaternion(robot_orientation)
+    R_world_to_robot = rotation_matrix_z(-yaw)  # Negative yaw inverts the transformation
+    p_robot = R_world_to_robot @ p_relative_world
+    
+    return p_robot[0], p_robot[1], p_robot[2]
 
 
 class TiagoControl(Node):
@@ -55,64 +92,29 @@ class TiagoControl(Node):
         self.get_logger().info(f"Table @ x={pose.position.x:.3f}, y={pose.position.y:.3f}")
         return pose.position.x, pose.position.y
 
-    def get_object_position_in_base(self, object_name: str):
+    def get_object_position_in_robot_frame(self, object_name: str):
+        """
+        Get object position in robot's base_footprint frame.
+        Uses transformation matrices for clarity.
+        """
         obj_pose = self.get_entity_position(object_name)
         robot_pose = self.get_entity_position("tiago")
 
-        dx = obj_pose.position.x - robot_pose.position.x
-        dy = obj_pose.position.y - robot_pose.position.y
-        dz = obj_pose.position.z - robot_pose.position.z
+        x_b, y_b, z_b = transform_to_robot_frame(
+            obj_pose.position,
+            robot_pose.position,
+            robot_pose.orientation
+        )
 
-        yaw = yaw_from_quaternion(robot_pose.orientation)
-        cos_y = math.cos(yaw)
-        sin_y = math.sin(yaw)
-
-        x_b = cos_y * dx + sin_y * dy
-        y_b = -sin_y * dx + cos_y * dy
-        z_b = dz
-
-        self.get_logger().info(f"{object_name} in base_footprint x={x_b:.3f}, y={y_b:.3f}, z={z_b:.3f}")
+        self.get_logger().info(
+            f"{object_name} in base_footprint: x={x_b:.3f}, y={y_b:.3f}, z={z_b:.3f}"
+        )
         return x_b, y_b, z_b
 
     def get_ee_pose(self):
         ee = self.moveit2.compute_fk()
         return ee.pose if hasattr(ee, "pose") else ee
 
-
-    """
-    def move_towards_table(self, table_x, table_y, distance_from_table=1.0):
-        robot_x, robot_y = 0.0, 0.0
-        dx = table_x - robot_x
-        dy = table_y - robot_y
-        distance = math.sqrt(dx * dx + dy * dy)
-        target_distance = distance - distance_from_table
-        if target_distance <= 0.5:
-            self.get_logger().info("Already close enough to table.")
-            return
-        angle = math.atan2(dy, dx)
-        self.get_logger().info(f"Move to table: dist={distance:.2f} m, angle={math.degrees(angle):.1f}°")
-
-        twist = Twist()
-        twist.angular.z = 0.3 if angle > 0.0 else -0.3
-        rot_time = abs(angle) / 0.3
-        start = time.time()
-        while time.time() - start < rot_time:
-            self.cmd_vel_pub.publish(twist)
-            time.sleep(0.1)
-        twist.angular.z = 0.0
-        self.cmd_vel_pub.publish(twist)
-        time.sleep(0.5)
-
-        twist.linear.x = 0.2
-        move_time = target_distance / 0.2
-        start = time.time()
-        while time.time() - start < move_time:
-            self.cmd_vel_pub.publish(twist)
-            time.sleep(0.1)
-        twist.linear.x = 0.0
-        self.cmd_vel_pub.publish(twist)
-        self.get_logger().info("Base positioned in front of table.")
-    """
 
     def move_towards_table(self, table_x, table_y, distance_from_table=1.0):
         robot_x, robot_y = 0.0, 0.0
@@ -190,7 +192,7 @@ class TiagoControl(Node):
 
     def move_arm(self, joint_positions):  #in radians
         self.get_logger().info(f"Moving arm to joints: {joint_positions}")
-        
+        joint_positions = [float(pos) for pos in joint_positions]
         if len(joint_positions) != 7:
             self.get_logger().error("move_arm expects exactly 7 joint positions")
             return
@@ -246,31 +248,38 @@ class TiagoControl(Node):
         rclpy.spin_until_future_complete(self, future)
         self.get_logger().info("DetachLink called.")
 
-    def grasp_object_by_name_front(self, object_name: str, approach_dist: float = 0.30, grasp_offset: float = 0.05, height_offset: float = 0.0):
-        obj_x, obj_y, obj_z = self.get_object_position_in_base(object_name)
+    def grasp_object_by_name_front(self, object_name: str, approach_dist: float = 0.30, grasp_offset: float = 0.05, height_offset: float = 0.10):
+        obj_x, obj_y, obj_z = self.get_object_position_in_robot_frame(object_name)
         ee_pose = self.get_ee_pose()
         ee_quat = [ee_pose.orientation.x, ee_pose.orientation.y, ee_pose.orientation.z, ee_pose.orientation.w]
         self.get_logger().info(f"EE @ x={ee_pose.position.x:.3f}, y={ee_pose.position.y:.3f}, z={ee_pose.position.z:.3f}")
 
         self.open_gripper()
 
+        # Determine approach direction, if the object is in front of the robot or not   
         direction = 1.0 if obj_x > 0.0 else -1.0
+        # Position "approach_dist" cm away from the object along x
         pre_x = obj_x - direction * approach_dist
-        grasp_x = obj_x - direction * grasp_offset
+
+        # Define also the height of grasp
         target_z = obj_z + height_offset
 
         self.move_gripper(pre_x, obj_y, target_z, ee_quat)
-        self.move_gripper(grasp_x, obj_y, target_z+0.10, ee_quat)
-        self.attach_object(model2=object_name, link2="link")
-        self.move_gripper(pre_x, obj_y, target_z+0.25, ee_quat)
-        self.get_logger().info("Front grasp sequence finished.")
-        #self.move_gripper(grasp_x+0.2, obj_y, target_z+0.25, ee_quat)
 
+        # Now position to grasp the object, position 5cm away from the object center to avoid compenetration
+        grasp_x = obj_x - direction * grasp_offset
+
+        self.move_gripper(grasp_x, obj_y, target_z, ee_quat)
+        self.attach_object(model2=object_name, link2="link")
+
+        # Rise the end effector
+        self.move_gripper(pre_x, obj_y, target_z + 0.25, ee_quat)
+        self.get_logger().info("Front grasp sequence finished.")
 
 
     def run(self):
         time.sleep(2.0)
-        table_pose = self.get_object_position_in_base("table")
+        table_pose = self.get_object_position_in_robot_frame("table")
         self.move_gripper(0.83578, -0.022147, 0.94412)
         self.move_towards_table(table_pose[0], table_pose[1], distance_from_table=0.8)
 

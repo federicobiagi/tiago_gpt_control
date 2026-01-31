@@ -11,7 +11,7 @@ import json
 
 
 class GPTManager(Node):
-    def __init__(self, api_key: str, model: str = "gpt-5-mini", temperature: float = 0.2, with_tools: bool = True):
+    def __init__(self, api_key: str, model: str = "gpt-5-mini", with_tools: bool = True):
         super().__init__("gpt_manager")
 
         if not api_key:
@@ -19,7 +19,6 @@ class GPTManager(Node):
 
         openai.api_key = api_key
         self.model = model
-        self.temperature = temperature
         self.with_tools = with_tools
     
         script_dir = Path(__file__).parent.resolve()
@@ -35,7 +34,6 @@ class GPTManager(Node):
 
         self.tiago = TiagoControl()   
         
-
         tools_path = script_dir / "tools.json"
         tools_content = tools_path.read_text(encoding="utf-8")
         self.tools = json.loads(tools_content)
@@ -59,34 +57,30 @@ class GPTManager(Node):
                 for tool_call in msg.tool_calls:
                     tool_name = tool_call.function.name
                     tool_args = json.loads(tool_call.function.arguments)
+                    answer = "Esecuzione del tool {} con argomenti {}. Risultato: ".format(tool_name, tool_args)
                     self.get_logger().info(f"Chiamata tool: {tool_name} con argomenti {tool_args}")
                     if tool_name == "move_distance":
                         self.tiago.move_distance(**tool_args)
-                        answer = "Movimento completato di {} metri.".format(tool_args['distance'])
+                        answer += "Movimento completato di {} metri.".format(tool_args['distance'])
                     elif tool_name == "rotate_angle":
                         self.tiago.rotate_angle(**tool_args)
-                        answer = "Rotazione completata di {} radianti.".format(tool_args['angle'])
+                        answer += "Rotazione completata di {} radianti.".format(tool_args['angle'])
                     elif tool_name == "move_arm":
+                        tool_args['joint_positions'] = [float(x) for x in tool_args['joint_positions']]
                         self.tiago.move_arm(**tool_args)
-                        answer = "Braccio mosso ai joint angle {}.".format(tool_args['joint_positions'])
+                        answer += "Braccio mosso ai joint angle {}.".format(tool_args['joint_positions'])
                     elif tool_name == "grasp_object_by_name_front":
                         self.tiago.grasp_object_by_name_front(**tool_args)
-                        answer = "Afferrato l'oggetto {}.".format(tool_args['object_name'])
+                        answer += "Afferrato l'oggetto {}.".format(tool_args['object_name'])
                     elif tool_name == "open_gripper":
                         self.tiago.open_gripper()
-                        answer = "Gripper aperto."
+                        answer += "Gripper aperto."
                     elif tool_name == "move_gripper":
                         self.tiago.move_gripper(**tool_args)
-                        answer = "Movimento del gripper completato."
+                        answer += "Movimento del gripper completato."
                     elif tool_name == "detach_object":
                         self.tiago.detach_object(**tool_args)
-                        answer = "Oggetto rilasciato."
-                    elif tool_name == "get_entity_position":
-                        position = self.tiago.get_entity_position(**tool_args)
-                        answer = f"La posizione di {tool_args['name']} è {position}."
-                    elif tool_name == "get_object_position_in_base":
-                        position = self.tiago.get_object_position_in_base(**tool_args)
-                        answer = f"La posizione di {tool_args['object_name']} nel frame base è {position}."
+                        answer += "Oggetto rilasciato."
                     self.chat_history.append({"role": "assistant", "content": answer})
 
                     
@@ -157,8 +151,6 @@ class GPTManager(Node):
                 answer = self.ask(user_input)
                 if answer and not 'python' in answer:
                     print(f"Gpt Bot: {answer}\n")
-                else:
-                    print("Gpt Bot non ha fornito una risposta.\n")
 
         except KeyboardInterrupt:
             pass
@@ -170,11 +162,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--api_key", type=str, default=os.getenv("OPENAI_Personal_Key"), help="OpenAI API key")
     parser.add_argument("--model", type=str, default="gpt-5", help="OpenAI model to use")
-    parser.add_argument("--temperature",type=float,default=0.2,help="Sampling temperature" )
-    parser.add_argument("--tools", type=bool, default=True, help="Enable tool usage" )
+    parser.add_argument("--tools", type=bool, default=False, help="Enable tool usage" )
     args = parser.parse_args()
 
-    node = GPTManager(api_key=args.api_key, model=args.model, temperature=args.temperature, with_tools=args.tools)
+    node = GPTManager(api_key=args.api_key, model=args.model, with_tools=args.tools)
 
     try:
         node.run()

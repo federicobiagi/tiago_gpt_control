@@ -38,7 +38,7 @@ una terna (x, y, z) in metri, nel frame world.
 Uso tipico:
 Per sapere dove si trova un oggetto o il robot nel mondo globale, prima di pianificare un movimento più complesso.
 
-- get_object_position_in_base(object_name: str) -> (x_b, y_b, z_b)
+- get_object_position_in_robot_frame(object_name: str) -> (x_b, y_b, z_b)
 Scopo: ottenere la posizione di un oggetto nel frame base del robot (base_footprint).
 Parametri:
 object_name: nome dell’oggetto in Gazebo (puoi scegliere tra "cocacola", "biscuits_pack").
