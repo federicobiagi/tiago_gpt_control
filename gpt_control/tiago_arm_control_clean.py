@@ -10,6 +10,7 @@ from geometry_msgs.msg import Twist
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from pymoveit2 import MoveIt2
 from linkattacher_msgs.srv import AttachLink, DetachLink
+from scipy.spatial.transform import Rotation as R
 
 
 def yaw_from_quaternion(q):
@@ -251,29 +252,42 @@ class TiagoControl(Node):
     def grasp_object_by_name_front(self, object_name: str, approach_dist: float = 0.30, grasp_offset: float = 0.05, height_offset: float = 0.10):
         obj_x, obj_y, obj_z = self.get_object_position_in_robot_frame(object_name)
         ee_pose = self.get_ee_pose()
-        ee_quat = [ee_pose.orientation.x, ee_pose.orientation.y, ee_pose.orientation.z, ee_pose.orientation.w]
         self.get_logger().info(f"EE @ x={ee_pose.position.x:.3f}, y={ee_pose.position.y:.3f}, z={ee_pose.position.z:.3f}")
 
+        # Fixed gripper orientation (x, y, z, w)
+        fixed_quat = (0.0030414, 0.042961, 0.066523, 0.99685)
+        
         self.open_gripper()
 
         # Determine approach direction, if the object is in front of the robot or not   
         direction = 1.0 if obj_x > 0.0 else -1.0
-        # Position "approach_dist" cm away from the object along x
-        pre_x = obj_x - direction * approach_dist
-
-        # Define also the height of grasp
+        
+        # Define grasp height - ABOVE the object to avoid table collision
         target_z = obj_z + height_offset
+        self.get_logger().info(f"Object z={obj_z:.3f}, target grasp z={target_z:.3f}")
+        
+        # Pre-grasp position (approach from distance)
+        pre_x = obj_x - direction * approach_dist
+        
+        self.get_logger().info(f"Moving to pre-grasp: x={pre_x:.3f}, y={obj_y:.3f}, z={target_z:.3f}")
+        self.move_gripper(pre_x, obj_y, target_z, fixed_quat)
 
-        self.move_gripper(pre_x, obj_y, target_z, ee_quat)
-
-        # Now position to grasp the object, position 5cm away from the object center to avoid compenetration
+        # Now position to grasp the object
         grasp_x = obj_x - direction * grasp_offset
-
-        self.move_gripper(grasp_x, obj_y, target_z, ee_quat)
+        
+        self.get_logger().info(f"Moving to grasp: x={grasp_x:.3f}, y={obj_y:.3f}, z={target_z:.3f}")
+        self.move_gripper(grasp_x, obj_y, target_z, fixed_quat)
+        
+        # Close gripper before attaching
+        self.close_gripper()
+        time.sleep(0.5)
+        
         self.attach_object(model2=object_name, link2="link")
 
         # Rise the end effector
-        self.move_gripper(pre_x, obj_y, target_z + 0.25, ee_quat)
+        self.get_logger().info(f"Lifting to z={target_z + 0.25:.3f}")
+        self.move_gripper(grasp_x, obj_y, target_z + 0.25, fixed_quat)
+        
         self.get_logger().info("Front grasp sequence finished.")
 
 
