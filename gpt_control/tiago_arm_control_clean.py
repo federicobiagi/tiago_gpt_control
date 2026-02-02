@@ -58,17 +58,16 @@ def transform_to_robot_frame(world_position, robot_position, robot_orientation):
 class TiagoControl(Node):
     def __init__(self):
         super().__init__("tiago_control_node")
-
-        # Crea un client per il ros service fornito da gazebo per ottenere lo stato di un'entità nella simulazione
+        # Create a client for the ros service to call
         self.get_entity_client = self.create_client(GetEntityState, "/gazebo/get_entity_state")
-        # Crea un publisher per il topic /cmd_vel per controllare il movimento della base del robot
+        # Create a publisher for the /cmd_vel topic to control the robot's base movement
         self.cmd_vel_pub = self.create_publisher(Twist, "/cmd_vel", 10)
-        # Crea un publisher per il topic del controller del gripper
+        # Create a publisher for the gripper controller topic
         self.gripper_pub = self.create_publisher(JointTrajectory, "/gripper_controller/joint_trajectory", 10)
-        # Crea i client per i ros service di attacco e distacco dei link per attaccarre oggetti al gripper del robot
+        # Create clients for the ros services to attach and detach links to the robot's gripper
         self.attach_client = self.create_client(AttachLink, "/ATTACHLINK")
         self.detach_client = self.create_client(DetachLink, "/DETACHLINK")
-        # Inizializza MoveIt2 per il controllo del braccio del robot
+        # Initialize MoveIt2 for controlling the robot's arm
         self.moveit2 = MoveIt2(node=self, joint_names=["arm_1_joint", "arm_2_joint", "arm_3_joint", "arm_4_joint", "arm_5_joint", "arm_6_joint", "arm_7_joint"], base_link_name="base_footprint", end_effector_name="gripper_grasping_frame", group_name="arm")
         #self.moveit2 = MoveIt2(node=self, joint_names=["arm_1_joint", "arm_2_joint", "arm_3_joint", "arm_4_joint", "arm_5_joint", "arm_6_joint", "arm_7_joint"], base_link_name="base_footprint", end_effector_name="gripper_link", group_name="arm")
         while not self.get_entity_client.wait_for_service(timeout_sec=1.0):
