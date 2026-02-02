@@ -80,11 +80,11 @@ Copy and paste the table.world file into:
 src/pal_gazebo_worlds/worlds
 
 ### Colcon build again
-    ```bash
-    cd ~/tiago_public_ws/
-    colcon build
-    source install/setup.bash
-    ```
+```bash
+cd ~/tiago_public_ws/
+colcon build
+source install/setup.bash
+```
 
 ## Usage
 
