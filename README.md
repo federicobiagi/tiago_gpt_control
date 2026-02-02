@@ -98,13 +98,23 @@ ros2 launch tiago_gazebo tiago_gazebo.launch.py is_public_sim:=True world_name:=
 
 Wait for Gazebo to fully load and the robot to initialize.
 
+### Optional: MoveIt Node
+Start MoveIt to check robot frames and manually move the robot arm.
+
+In a new terminal:
+```bash
+cd ~/tiago_public_ws
+ros2 launch tiago_moveit_config moveit_rviz.launch.py
+```
+
 ### 2. Run the GPT Control Node
 
 In a new terminal:
 
 ```bash
 source ~/tiago_public_ws/install/setup.bash
-ros2 run gpt_control gpt_manager
+cd ~/tiago_public_ws/src/gpt_control/gpt_control
+python3 gpt_manager_node.py
 ```
 
 ### 3. Command the Robot
