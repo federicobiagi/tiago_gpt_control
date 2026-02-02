@@ -55,7 +55,6 @@ install/
 log/
 build/
 
-# Sensitive Data (VERY IMPORTANT)
 code.txt
 *.key
 .env
